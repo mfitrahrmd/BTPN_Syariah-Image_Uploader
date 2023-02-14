@@ -13,11 +13,11 @@ import (
 )
 
 var (
-	ErrInternalServer       = errors.New("unexpected server error, please try again later")
-	ErrUserNotFound         = errors.New("user not found")
-	ErrWrongPassword        = errors.New("wrong password")
-	ErrUsernameAlreadyExist = errors.New("username already exist")
-	ErrEmailAlreadyExist    = errors.New("email already exist")
+	errInternalServer       = errors.New("unexpected server error, please try again later")
+	errUserNotFound         = errors.New("user not found")
+	errWrongPassword        = errors.New("wrong password")
+	errUsernameAlreadyExist = errors.New("username already exist")
+	errEmailAlreadyExist    = errors.New("email already exist")
 )
 
 type userController struct {
@@ -50,7 +50,7 @@ func (uc *userController) POSTRegisterUser(c *gin.Context) {
 	hashedPassword, err := helpers.HashPassword(req.Password)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-			"message": ErrInternalServer,
+			"message": errInternalServer,
 		})
 
 		return
@@ -66,7 +66,7 @@ func (uc *userController) POSTRegisterUser(c *gin.Context) {
 	if err = uc.database.Model(&models.User{}).Create(&user).Error; err != nil {
 		fmt.Println(err)
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-			"message": ErrInternalServer,
+			"message": errInternalServer,
 		})
 
 		return
