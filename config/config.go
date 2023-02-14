@@ -21,7 +21,7 @@ type Config struct {
 	}
 	Jwt struct {
 		SecretKey                string
-		TokenExpirationInMinutes int
+		TokenExpirationInSeconds int
 	}
 }
 
