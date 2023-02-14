@@ -11,12 +11,12 @@ type Config struct {
 	User     string
 	Password string
 	Host     string
-	Port     string
+	Port     int
 	Database string
 }
 
 func RunDatabase(config Config, runMigration bool) *gorm.DB {
-	conn, err := gorm.Open(postgres.Open(fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", config.User, config.Password, config.Host, config.Port, config.Database)))
+	conn, err := gorm.Open(postgres.Open(fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable", config.User, config.Password, config.Host, config.Port, config.Database)))
 	if err != nil {
 		panic(fmt.Sprintf("err connecting to database : %v\n", err))
 	}
