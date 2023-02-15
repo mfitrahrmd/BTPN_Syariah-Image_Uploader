@@ -21,13 +21,15 @@ var (
 )
 
 type userController struct {
-	database *gorm.DB
+	jwtService *helpers.JWTService
+	database   *gorm.DB
 }
 
 // NewUserController create instance of user controller
-func NewUserController(database *gorm.DB) *userController {
+func NewUserController(database *gorm.DB, jwtService *helpers.JWTService) *userController {
 	uc := userController{
-		database: database,
+		database:   database,
+		jwtService: jwtService,
 	}
 
 	return &uc
