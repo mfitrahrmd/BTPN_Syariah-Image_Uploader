@@ -47,7 +47,7 @@ func (uc *userController) POSTRegisterUser(c *gin.Context) {
 	err := c.ShouldBindJSON(&req)
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-			"message": customValidationError(err.(validator.ValidationErrors)),
+			"message": helpers.CustomValidationErrorMessage(err.(validator.ValidationErrors)),
 		})
 
 		return
@@ -286,24 +286,4 @@ func (uc *userController) DELETEDeleteUser(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message": "user deleted",
 	})
-}
-
-// customize for better gin validation error
-func customValidationError(vErr validator.ValidationErrors) map[string]any {
-	errs := make(map[string]any)
-
-	for _, ve := range vErr {
-		switch ve.Tag() {
-		case "required":
-			errs[ve.Field()] = fmt.Sprintf("%s is required", ve.Field())
-		case "email":
-			errs[ve.Field()] = fmt.Sprintf("%s must be valid email", ve.Field())
-		case "min":
-			errs[ve.Field()] = fmt.Sprintf("%s must be longer than or equal %s", ve.Field(), ve.Param())
-		case "max":
-			errs[ve.Field()] = fmt.Sprintf("%s must be less than or equal %s", ve.Field(), ve.Param())
-		}
-	}
-
-	return errs
 }
