@@ -162,9 +162,9 @@ func (uc *userController) GETLoginUser(c *gin.Context) {
 }
 
 func (uc *userController) PUTUpdateUser(c *gin.Context) {
-	// bind and check user request json data
 	userId := c.Param("userId")
 
+	// bind and check user request json data
 	var req app.UpdateUserRequest
 
 	err := c.ShouldBindJSON(&req)
@@ -248,6 +248,43 @@ func (uc *userController) PUTUpdateUser(c *gin.Context) {
 		ID:       user.ID,
 		Username: user.Username,
 		Email:    user.Email,
+	})
+}
+
+func (uc *userController) DELETEDeleteUser(c *gin.Context) {
+	userId := c.Param("userId")
+
+	// check if user to be deleted is exists in repository
+	var user models.User
+
+	if err := uc.database.Model(&models.User{}).First(&user, userId).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{
+				"message": errUserNotFound.Error(),
+			})
+
+			return
+		}
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"message": errInternalServer.Error(),
+		})
+
+		return
+
+	}
+
+	// delete user data in repository permanently
+	if err := uc.database.Unscoped().Model(&models.User{}).Delete(&user).Error; err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"message": errInternalServer.Error(),
+		})
+
+		return
+	}
+
+	// send response with message
+	c.JSON(http.StatusOK, gin.H{
+		"message": "user deleted",
 	})
 }
 
