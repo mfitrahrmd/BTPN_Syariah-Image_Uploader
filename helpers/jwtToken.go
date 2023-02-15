@@ -1,67 +1,31 @@
 package helpers
 
 import (
-	"errors"
 	"github.com/golang-jwt/jwt"
-	"time"
-)
-
-var (
-	ErrInvalidJWTConfig = errors.New("invalid jwt config")
 )
 
 type Claims struct {
 	UserID uint
 }
 
-type tokenClaims struct {
+type TokenClaims struct {
 	jwt.StandardClaims
 	Claims
 }
 
-var jwtInstance *JWTService
-
-type JWTConfig struct {
-	SecretKey                string
-	TokenExpirationInSeconds time.Duration
+func GenerateJWT(tokenClaims TokenClaims, secretKey string) (string, error) {
+	return jwt.NewWithClaims(jwt.SigningMethodHS256, tokenClaims).SignedString([]byte(secretKey))
 }
 
-type JWTService struct {
-	JWTConfig
-}
+func ValidateJWT(token string, secretKey string) (TokenClaims, error) {
+	tokenClaims := new(TokenClaims)
 
-func NewJWTService(jwtConfig JWTConfig) (*JWTService, error) {
-	if jwtInstance == nil {
-		if jwtConfig.SecretKey == "" || jwtConfig.TokenExpirationInSeconds < 1 {
-			return nil, ErrInvalidJWTConfig
-		}
-
-		jwtInstance = &JWTService{
-			JWTConfig: jwtConfig,
-		}
-	}
-
-	return jwtInstance, nil
-}
-
-func (js *JWTService) GenerateJWT(claims Claims) (string, error) {
-	return jwt.NewWithClaims(jwt.SigningMethodHS256, tokenClaims{
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(time.Second * js.TokenExpirationInSeconds).Unix(),
-		},
-		Claims: claims,
-	}).SignedString([]byte(js.SecretKey))
-}
-
-func (js *JWTService) ValidateJWT(token string) (Claims, error) {
-	claims := new(tokenClaims)
-
-	_, err := jwt.ParseWithClaims(token, claims, func(t *jwt.Token) (interface{}, error) {
-		return []byte(js.SecretKey), nil
+	_, err := jwt.ParseWithClaims(token, tokenClaims, func(t *jwt.Token) (interface{}, error) {
+		return []byte(secretKey), nil
 	})
 	if err != nil {
-		return Claims{}, err
+		return TokenClaims{}, err
 	}
 
-	return (*claims).Claims, nil
+	return *tokenClaims, nil
 }

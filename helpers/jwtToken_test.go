@@ -1,56 +1,54 @@
 package helpers
 
 import (
+	"github.com/golang-jwt/jwt"
 	"github.com/stretchr/testify/assert"
-	"log"
 	"testing"
 	"time"
 )
 
-var JWT *JWTService
-
-func init() {
-	jwtServiceInstance, err := NewJWTService(Config{
-		SecretKey:                "secret",
-		TokenExpirationInSeconds: 5,
-	})
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	JWT = jwtServiceInstance
-}
-
-func generateJWT(t *testing.T, claims Claims) string {
-	token, err := JWT.GenerateJWT(claims)
+func generateJWT(t *testing.T, tokenClaims TokenClaims) string {
+	token, err := GenerateJWT(tokenClaims, "secret")
 	assert.NoError(t, err)
 
 	return token
 }
 
 func TestGenerateJWT(t *testing.T) {
-	token := generateJWT(t, Claims{1})
+	token := generateJWT(t, TokenClaims{
+		StandardClaims: jwt.StandardClaims{
+			ExpiresAt: time.Now().Add(time.Second * 3).Unix(),
+		},
+		Claims: Claims{
+			UserID: 1,
+		},
+	})
 
 	t.Logf("created token : %s", token)
 }
 
 func TestValidateJWT(t *testing.T) {
-	c := Claims{
-		UserID: 1,
+	tc := TokenClaims{
+		StandardClaims: jwt.StandardClaims{
+			ExpiresAt: time.Now().Add(time.Second * 3).Unix(),
+		},
+		Claims: Claims{
+			UserID: 1,
+		},
 	}
 
-	token := generateJWT(t, c)
+	token := generateJWT(t, tc)
 
-	claims, err := JWT.ValidateJWT(token)
+	claims, err := ValidateJWT(token, "secret")
 	assert.NoError(t, err)
 
-	assert.Equal(t, claims.UserID, c.UserID)
+	assert.Equal(t, claims.UserID, tc.UserID)
 
-	claims, err = JWT.ValidateJWT("its.invalid.token")
+	claims, err = ValidateJWT("its.invalid.token", "secret")
 	assert.Error(t, err)
 
-	time.Sleep(time.Second * 6)
+	time.Sleep(time.Second * 5)
 
-	claims, err = JWT.ValidateJWT(token)
+	claims, err = ValidateJWT(token, "secret")
 	assert.Error(t, err)
 }
