@@ -5,12 +5,16 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"github.com/golang-jwt/jwt"
 	"github.com/mfitrahrmd/BTPN_Syariah-Image_Uploader/app"
 	"github.com/mfitrahrmd/BTPN_Syariah-Image_Uploader/config"
 	"github.com/mfitrahrmd/BTPN_Syariah-Image_Uploader/helpers"
 	"github.com/mfitrahrmd/BTPN_Syariah-Image_Uploader/models"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
+	"log"
 	"net/http"
+	"time"
 )
 
 var (
@@ -80,6 +84,80 @@ func (uc *userController) POSTRegisterUser(c *gin.Context) {
 		ID:       user.ID,
 		Username: user.Username,
 		Email:    user.Email,
+	})
+}
+
+func (uc *userController) GETLoginUser(c *gin.Context) {
+	// bind and check user request json data
+	var req app.LoginUserRequest
+
+	err := c.ShouldBindJSON(&req)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"message": err.Error(),
+		})
+
+		return
+	}
+
+	// check if user is exists in repository with given email
+	var user models.User
+
+	if err := uc.database.Model(&models.User{}).First(&user, "email = ?", req.Email).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{
+				"message": errUserNotFound.Error(),
+			})
+
+			return
+		}
+
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"message": errInternalServer.Error(),
+		})
+
+		return
+	}
+
+	// check if given password is correct
+	isMatch, err := helpers.ComparePassword(req.Password, user.Password)
+	if err != nil {
+		log.Println(errors.Is(err, bcrypt.ErrMismatchedHashAndPassword))
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"message": errInternalServer.Error(),
+		})
+
+		return
+	}
+
+	if !isMatch {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+			"message": errWrongPassword.Error(),
+		})
+
+		return
+	}
+
+	// generate access token
+	token, err := helpers.GenerateJWT(helpers.TokenClaims{
+		StandardClaims: jwt.StandardClaims{
+			ExpiresAt: time.Now().Add(time.Second * uc.serverConfig.JwtTokenExpirationLength).Unix(),
+		},
+		Claims: helpers.Claims{
+			UserID: user.ID,
+		},
+	}, uc.serverConfig.JwtSecretKey)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"message": errInternalServer.Error(),
+		})
+
+		return
+	}
+
+	// send response with generated access token
+	c.JSON(http.StatusOK, app.LoginUserResponse{
+		AccessToken: token,
 	})
 }
 
