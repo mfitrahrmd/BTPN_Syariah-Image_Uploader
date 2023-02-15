@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"github.com/mfitrahrmd/BTPN_Syariah-Image_Uploader/app"
+	"github.com/mfitrahrmd/BTPN_Syariah-Image_Uploader/config"
 	"github.com/mfitrahrmd/BTPN_Syariah-Image_Uploader/helpers"
 	"github.com/mfitrahrmd/BTPN_Syariah-Image_Uploader/models"
 	"gorm.io/gorm"
@@ -21,15 +22,15 @@ var (
 )
 
 type userController struct {
-	jwtService *helpers.JWTService
-	database   *gorm.DB
+	serverConfig config.Config
+	database     *gorm.DB
 }
 
 // NewUserController create instance of user controller
-func NewUserController(database *gorm.DB, jwtService *helpers.JWTService) *userController {
+func NewUserController(database *gorm.DB, serverConfig config.Config) *userController {
 	uc := userController{
-		database:   database,
-		jwtService: jwtService,
+		serverConfig: serverConfig,
+		database:     database,
 	}
 
 	return &uc
