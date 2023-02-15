@@ -21,23 +21,23 @@ type tokenClaims struct {
 
 var jwtInstance *JWTService
 
-type Config struct {
+type JWTConfig struct {
 	SecretKey                string
 	TokenExpirationInSeconds time.Duration
 }
 
 type JWTService struct {
-	Config
+	JWTConfig
 }
 
-func NewJWTService(jwtConfig Config) (*JWTService, error) {
+func NewJWTService(jwtConfig JWTConfig) (*JWTService, error) {
 	if jwtInstance == nil {
 		if jwtConfig.SecretKey == "" || jwtConfig.TokenExpirationInSeconds < 1 {
 			return nil, ErrInvalidJWTConfig
 		}
 
 		jwtInstance = &JWTService{
-			Config: jwtConfig,
+			JWTConfig: jwtConfig,
 		}
 	}
 
