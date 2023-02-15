@@ -2,45 +2,32 @@ package config
 
 import (
 	"fmt"
-	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"os"
+	"time"
 )
 
 type Config struct {
-	AppEnv string
-	App    struct {
-		Host string
-		Port int
-	}
-	Database struct {
-		Host     string
-		Port     int
-		User     string
-		Password string
-		Database string
-	}
-	Jwt struct {
-		SecretKey                string
-		TokenExpirationInSeconds int
-	}
+	AppHost string `mapstructure:"APP_HOST"`
+	AppPort string `mapstructure:"APP_PORT"`
+
+	PostgresHost     string `mapstructure:"POSTGRES_HOST"`
+	PostgresPort     string `mapstructure:"POSTGRES_PORT"`
+	PostgresUser     string `mapstructure:"POSTGRES_USER"`
+	PostgresPassword string `mapstructure:"POSTGRES_PASSWORD"`
+	PostgresDb       string `mapstructure:"POSTGRES_DB"`
+
+	JwtSecretKey             string        `mapstructure:"JWT_SECRET_KEY"`
+	JwtTokenExpirationLength time.Duration `mapstructure:"JWT_TOKEN_EXPIRATION_LENGTH"`
 }
 
 func LoadConfig(configFilePath string) (Config, error) {
-	pflag.String("appenv", "dev", "application environment : dev | prod")
+	configName := fmt.Sprintf("config.%s", os.Getenv("APPENV"))
 
-	pflag.Parse()
-	err := viper.BindPFlags(pflag.CommandLine)
-	if err != nil {
-		return Config{}, fmt.Errorf("err bind p flags : %w", err)
-	}
-
-	configName := fmt.Sprintf("config.%s", viper.GetString("appenv"))
-
-	fmt.Println(configName)
-
-	viper.SetConfigName(configName)
 	viper.AddConfigPath(configFilePath)
-	err = viper.ReadInConfig()
+	viper.SetConfigName(configName)
+	viper.AutomaticEnv()
+	err := viper.ReadInConfig()
 	if err != nil {
 		return Config{}, fmt.Errorf("err read in config : %w", err)
 	}
