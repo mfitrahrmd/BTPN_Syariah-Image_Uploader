@@ -6,7 +6,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"log"
 )
 
 type Config struct {
@@ -31,7 +30,7 @@ func StartDatabase(config Config, runMigration bool) (*gorm.DB, error) {
 			return nil, fmt.Errorf("err running database migration : %w", err)
 		}
 
-		log.Println("[~] database migration successfully")
+		logrus.Infoln("[~] database migration successfully")
 	}
 
 	return conn, nil
