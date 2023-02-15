@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"os"
 	"time"
@@ -22,6 +23,17 @@ type Config struct {
 }
 
 func LoadConfig(configFilePath string) (Config, error) {
+	logrus.Infoln("[~] loading config..")
+
+	if os.Getenv("APPENV") == "" {
+		logrus.Infoln("[~] application environment does not set, running in dev mode..")
+
+		err := os.Setenv("APPENV", "dev")
+		if err != nil {
+			return Config{}, fmt.Errorf("err setting env variable : %w", err)
+		}
+	}
+
 	configName := fmt.Sprintf("config.%s", os.Getenv("APPENV"))
 
 	viper.AddConfigPath(configFilePath)
