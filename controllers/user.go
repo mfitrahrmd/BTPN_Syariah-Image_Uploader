@@ -161,6 +161,96 @@ func (uc *userController) GETLoginUser(c *gin.Context) {
 	})
 }
 
+func (uc *userController) PUTUpdateUser(c *gin.Context) {
+	// bind and check user request json data
+	userId := c.Param("userId")
+
+	var req app.UpdateUserRequest
+
+	err := c.ShouldBindJSON(&req)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"message": err.Error(),
+		})
+
+		return
+	}
+
+	// check if user to be updated is exists in repository
+	var user models.User
+
+	if err := uc.database.Model(&models.User{}).First(&user, userId).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{
+				"message": errUserNotFound.Error(),
+			})
+
+			return
+		}
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"message": errInternalServer.Error(),
+		})
+
+		return
+
+	}
+
+	// check if username already in used
+	q := uc.database.Model(&models.User{}).Where("username = ?", req.Username).Not("id = ?", userId).Find(&models.User{})
+	if q.Error != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"message": errInternalServer.Error(),
+		})
+
+		return
+	}
+
+	if q.RowsAffected > 0 {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"message": errUsernameAlreadyExist.Error(),
+		})
+
+		return
+	}
+
+	// check if email already in used
+	q = uc.database.Model(&models.User{}).Where("email = ?", req.Email).Not("id = ?", userId).Find(&models.User{})
+	if q.Error != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"message": errInternalServer.Error(),
+		})
+
+		return
+	}
+
+	if q.RowsAffected > 0 {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"message": errEmailAlreadyExist.Error(),
+		})
+
+		return
+	}
+
+	// update the user data
+	user.Username = req.Username
+	user.Email = req.Email
+
+	if err = uc.database.Model(&models.User{}).Where("id = ?", userId).Updates(&user).Error; err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"message": errInternalServer.Error(),
+		})
+
+		return
+	}
+
+	// send response with updated user's data
+	c.JSON(http.StatusOK, app.UpdateUserResponse{
+		ID:       user.ID,
+		Username: user.Username,
+		Email:    user.Email,
+	})
+}
+
 // customize for better gin validation error
 func customValidationError(vErr validator.ValidationErrors) map[string]any {
 	errs := make(map[string]any)
