@@ -88,8 +88,50 @@ func (pc *photoController) GETFindAllPhotos(c *gin.Context) {
 }
 
 func (pc *photoController) PUTUpdatePhoto(c *gin.Context) {
-	//TODO implement me
-	panic("implement me")
+	photoId := c.Param("photoId")
+
+	var req app.UpdatePhotoRequest
+
+	err := c.ShouldBindJSON(&req)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, helpers.CustomValidationErrorMessage(err.(validator.ValidationErrors)))
+
+		return
+	}
+
+	// check if photo to be updated is exists in repository
+	var photo models.Photo
+
+	if err := pc.database.Model(&models.Photo{}).First(&photo, photoId).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{
+				"message": errPhotoNotFound.Error(),
+			})
+
+			return
+		}
+	}
+
+	// update the photo data
+	photo.Title = req.Title
+	photo.Caption = req.Caption
+	photo.PhotoUrl = req.PhotoUrl
+
+	if err := pc.database.Model(&models.Photo{}).Where("id = ?", photoId).Updates(&photo); err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"message": errInternalServer.Error(),
+		})
+
+		return
+	}
+
+	// send response with updated photo's data
+	c.JSON(http.StatusOK, app.UpdatePhotoResponse{
+		ID:       photo.ID,
+		Title:    photo.Title,
+		Caption:  photo.Caption,
+		PhotoUrl: photo.PhotoUrl,
+	})
 }
 
 func (pc *photoController) DELETEDeletePhoto(c *gin.Context) {
