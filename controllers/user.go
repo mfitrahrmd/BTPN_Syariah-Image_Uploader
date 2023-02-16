@@ -53,6 +53,42 @@ func (uc *userController) POSTRegisterUser(c *gin.Context) {
 		return
 	}
 
+	// check if username already in used
+	q := uc.database.Model(&models.User{}).Where("username = ?", req.Username).Find(&models.User{})
+	if q.Error != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"message": errInternalServer.Error(),
+		})
+
+		return
+	}
+
+	if q.RowsAffected > 0 {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"message": errUsernameAlreadyExist.Error(),
+		})
+
+		return
+	}
+
+	// check if email already in used
+	q = uc.database.Model(&models.User{}).Where("email = ?", req.Email).Find(&models.User{})
+	if q.Error != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"message": errInternalServer.Error(),
+		})
+
+		return
+	}
+
+	if q.RowsAffected > 0 {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"message": errEmailAlreadyExist.Error(),
+		})
+
+		return
+	}
+
 	// hash user's password from request
 	hashedPassword, err := helpers.HashPassword(req.Password)
 	if err != nil {
@@ -141,7 +177,7 @@ func (uc *userController) GETLoginUser(c *gin.Context) {
 	// generate access token
 	token, err := helpers.GenerateJWT(helpers.TokenClaims{
 		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(time.Second * uc.serverConfig.JwtTokenExpirationLength).Unix(),
+			ExpiresAt: time.Now().Add(uc.serverConfig.JwtTokenExpirationLength).Unix(),
 		},
 		Claims: helpers.Claims{
 			UserID: user.ID,
