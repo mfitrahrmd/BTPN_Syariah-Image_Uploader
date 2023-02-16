@@ -135,6 +135,32 @@ func (pc *photoController) PUTUpdatePhoto(c *gin.Context) {
 }
 
 func (pc *photoController) DELETEDeletePhoto(c *gin.Context) {
-	//TODO implement me
-	panic("implement me")
+	photoId := c.Param("photoId")
+
+	// check if photo to be updated is exists in repository
+	var photo models.Photo
+
+	if err := pc.database.Model(&models.Photo{}).First(&photo, photoId).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{
+				"message": errPhotoNotFound.Error(),
+			})
+
+			return
+		}
+	}
+
+	// delete photo data in repository permanently
+	if err := pc.database.Unscoped().Model(&models.Photo{}).Delete(photo).Error; err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"message": errInternalServer.Error(),
+		})
+
+		return
+	}
+
+	// send response with message
+	c.JSON(http.StatusOK, gin.H{
+		"message": "photo deleted",
+	})
 }
