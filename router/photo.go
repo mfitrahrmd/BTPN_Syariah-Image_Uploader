@@ -11,12 +11,22 @@ type PhotoController interface {
 	DELETEDeletePhoto(c *gin.Context)
 }
 
-func WithPhotoRoutes(r gin.IRouter, photoController PhotoController) {
-	users := r.Group("/photos")
+type PhotoMiddleware interface {
+	VerifyPhotoOwner(c *gin.Context)
+}
+
+type AuthMiddleware interface {
+	Authorization(c *gin.Context)
+}
+
+func WithPhotoRoutes(r gin.IRouter, photoController PhotoController, authMiddleware AuthMiddleware, photoMiddleware PhotoMiddleware) {
+	photos := r.Group("/photos")
 	{
-		users.POST("/", photoController.POSTInsertPhoto)
-		users.GET("/", photoController.GETFindAllPhotos)
-		users.PUT("/:photoId", photoController.PUTUpdatePhoto)
-		users.DELETE("/:photoId", photoController.DELETEDeletePhoto)
+		photos.Use(authMiddleware.Authorization)
+		photos.POST("", photoController.POSTInsertPhoto)
+		photos.GET("", photoController.GETFindAllPhotos)
+		photos.Use(photoMiddleware.VerifyPhotoOwner)
+		photos.PUT("/:photoId", photoController.PUTUpdatePhoto)
+		photos.DELETE("/:photoId", photoController.DELETEDeletePhoto)
 	}
 }
