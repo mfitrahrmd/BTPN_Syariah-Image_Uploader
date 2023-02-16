@@ -22,15 +22,15 @@ type Config struct {
 	JwtTokenExpirationLength time.Duration `mapstructure:"JWT_TOKEN_EXPIRATION_LENGTH"`
 }
 
-func LoadConfig(configFilePath string) (Config, error) {
-	logrus.Infoln("[~] loading config..")
+func New(configFilePath string, logger *logrus.Logger) *Config {
+	logger.Infoln("[~] loading config..")
 
 	if os.Getenv("APPENV") == "" {
-		logrus.Infoln("[~] application environment does not set, running in dev mode..")
+		logger.Infoln("[~] application environment does not set, running in dev mode..")
 
 		err := os.Setenv("APPENV", "dev")
 		if err != nil {
-			return Config{}, fmt.Errorf("err setting env variable : %w", err)
+			panic(err)
 		}
 	}
 
@@ -41,15 +41,15 @@ func LoadConfig(configFilePath string) (Config, error) {
 	viper.AutomaticEnv()
 	err := viper.ReadInConfig()
 	if err != nil {
-		return Config{}, fmt.Errorf("err read in config : %w", err)
+		panic(err)
 	}
 
 	var config Config
 
 	err = viper.Unmarshal(&config)
 	if err != nil {
-		return Config{}, fmt.Errorf("err unmarshaling config : %w", err)
+		panic(err)
 	}
 
-	return config, err
+	return &config
 }
