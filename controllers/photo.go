@@ -74,8 +74,17 @@ func (pc *photoController) POSTInsertPhoto(c *gin.Context) {
 }
 
 func (pc *photoController) GETFindAllPhotos(c *gin.Context) {
-	//TODO implement me
-	panic("implement me")
+	var res app.FindAllPhotosResponse
+
+	if err := pc.database.Model(&models.Photo{}).Find(&res.Photos).Error; err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"message": errInternalServer.Error(),
+		})
+
+		return
+	}
+
+	c.JSON(http.StatusOK, res)
 }
 
 func (pc *photoController) PUTUpdatePhoto(c *gin.Context) {
