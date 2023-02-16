@@ -1,0 +1,36 @@
+networks:
+  BTPN_Syariah:
+    driver: bridge
+
+services:
+  database:
+    image: postgres:alpine
+    expose:
+      - 5432
+    env_file:
+      - config.dev.env
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - BTPN_Syariah
+
+  backend:
+    depends_on:
+      - database
+    build:
+      dockerfile: Dockerfile
+    env_file:
+      - config.dev.env
+    environment:
+      - POSTGRES_HOST=database # override the variable from env_file
+    restart: on-failure
+    expose:
+      - 3000
+    ports:
+      - 3000:3000
+    networks:
+      - BTPN_Syariah
