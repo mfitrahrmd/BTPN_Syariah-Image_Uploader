@@ -16,22 +16,22 @@ type Config struct {
 	Database string
 }
 
-func StartDatabase(config Config, runMigration bool) (*gorm.DB, error) {
+func Start(config Config, runMigration bool, logger *logrus.Logger) *gorm.DB {
 	conn, err := gorm.Open(postgres.Open(fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", config.User, config.Password, config.Host, config.Port, config.Database)))
 	if err != nil {
-		return nil, fmt.Errorf("err connecting to database : %w", err)
+		panic(err)
 	}
 
-	logrus.Infoln("[~] database connected")
+	logger.Infoln("[~] database connected")
 
 	if runMigration {
 		err = conn.AutoMigrate(&models.User{}, &models.Photo{})
 		if err != nil {
-			return nil, fmt.Errorf("err running database migration : %w", err)
+			panic(err)
 		}
 
-		logrus.Infoln("[~] database migration successfully")
+		logger.Infoln("[~] database migration successfully")
 	}
 
-	return conn, nil
+	return conn
 }
