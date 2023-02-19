@@ -11,4 +11,4 @@ build:
 	go get -v ./... && go mod tidy && go build -o build/ cmd/main.go
 
 build-docker:
-	docker build .
+	docker build . -t btpn_syariah-image_uploader:latest
