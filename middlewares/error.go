@@ -1,14 +1,16 @@
 package middlewares
 
 import (
-	"errors"
 	"github.com/gin-gonic/gin"
-	"github.com/go-playground/validator/v10"
-	customError "github.com/mfitrahrmd/BTPN_Syariah-Image_Uploader/error"
-	"github.com/mfitrahrmd/BTPN_Syariah-Image_Uploader/helpers"
+	controllerError "github.com/mfitrahrmd/BTPN_Syariah-Image_Uploader/error"
 	"github.com/sirupsen/logrus"
 	"net/http"
 )
+
+type errorResponse struct {
+	Message string `json:"message,omitempty"`
+	Details any    `json:"details,omitempty"`
+}
 
 func ErrorHandler(logger *logrus.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -16,48 +18,23 @@ func ErrorHandler(logger *logrus.Logger) gin.HandlerFunc {
 
 		if isErrExist := len(c.Errors) > 0; isErrExist {
 			for _, e := range c.Errors {
-				if e.IsType(gin.ErrorTypeBind) {
-					if vErr, ok := e.Err.(validator.ValidationErrors); ok {
-						c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-							"message": helpers.CustomValidationErrorMessage(vErr),
-						})
 
-						return
-					}
-					c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-						"message": "invalid request data",
+				if ce, ok := e.Err.(controllerError.ControllerError); ok {
+					c.AbortWithStatusJSON(ce.StatusCode, errorResponse{
+						Message: ce.Message,
+						Details: ce.Details,
 					})
 
 					return
 				}
 
-				if e.IsType(gin.ErrorTypePublic) {
-					var cErr customError.ControllerError
+				logger.Errorln(e)
 
-					if errors.As(e.Err, &cErr) {
-						c.AbortWithStatusJSON(cErr.StatusCode, gin.H{
-							"message": cErr.Error(),
-						})
+				c.AbortWithStatusJSON(http.StatusInternalServerError, errorResponse{
+					Message: e.Error(),
+				})
 
-						return
-					}
-
-					c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-						"message": e.Error(),
-					})
-
-					return
-				}
-
-				{
-					logger.Errorln(e)
-
-					c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-						"message": errInternalServer.Error(),
-					})
-
-					return
-				}
+				return
 
 			}
 		}
