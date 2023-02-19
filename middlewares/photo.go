@@ -19,11 +19,11 @@ var (
 )
 
 type photoMiddleware struct {
-	serverConfig config.Config
+	serverConfig *config.Config
 	database     *gorm.DB
 }
 
-func NewPhotoMiddleware(database *gorm.DB, serverConfig config.Config) *photoMiddleware {
+func NewPhotoMiddleware(database *gorm.DB, serverConfig *config.Config) *photoMiddleware {
 	pm := photoMiddleware{
 		serverConfig: serverConfig,
 		database:     database,

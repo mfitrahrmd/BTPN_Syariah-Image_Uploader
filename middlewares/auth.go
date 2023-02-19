@@ -9,11 +9,11 @@ import (
 )
 
 type authMiddleware struct {
-	serverConfig config.Config
+	serverConfig *config.Config
 	database     *gorm.DB
 }
 
-func NewAuthMiddleware(database *gorm.DB, serverConfig config.Config) *authMiddleware {
+func NewAuthMiddleware(database *gorm.DB, serverConfig *config.Config) *authMiddleware {
 	am := authMiddleware{
 		serverConfig: serverConfig,
 		database:     database,
