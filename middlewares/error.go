@@ -4,7 +4,7 @@ import (
 	"errors"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
-	"github.com/mfitrahrmd/BTPN_Syariah-Image_Uploader/controllers"
+	customError "github.com/mfitrahrmd/BTPN_Syariah-Image_Uploader/error"
 	"github.com/mfitrahrmd/BTPN_Syariah-Image_Uploader/helpers"
 	"github.com/sirupsen/logrus"
 	"net/http"
@@ -32,7 +32,7 @@ func ErrorHandler(logger *logrus.Logger) gin.HandlerFunc {
 				}
 
 				if e.IsType(gin.ErrorTypePublic) {
-					var cErr controllers.ControllerError
+					var cErr customError.ControllerError
 
 					if errors.As(e.Err, &cErr) {
 						c.AbortWithStatusJSON(cErr.StatusCode, gin.H{
