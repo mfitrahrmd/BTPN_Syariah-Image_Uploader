@@ -26,13 +26,15 @@ func New(configFilePath string, logger *logrus.Logger) *Config {
 	logger.Infoln("[~] loading config..")
 
 	if os.Getenv("APPENV") == "" {
-		logger.Infoln("[~] application environment does not set, running in dev mode..")
+		logger.Infoln("[~] application environment does not set, dev mode will be used..")
 
 		err := os.Setenv("APPENV", "dev")
 		if err != nil {
 			panic(err)
 		}
 	}
+
+	logger.Infoln(fmt.Sprintf("running in %s mode", os.Getenv("APPENV")))
 
 	configName := fmt.Sprintf("config.%s", os.Getenv("APPENV"))
 
