@@ -9,6 +9,8 @@ WORKDIR /app
 COPY . .
 
 RUN go mod download
+RUN go get -v ./...
+RUN go mod tidy
 
 COPY . .
 
@@ -18,7 +20,7 @@ FROM alpine:latest
 
 WORKDIR /root
 
-COPY --from=builder /app/build/* .
+COPY --from=builder /app/build/main .
 COPY --from=builder /app/*.env .
 
 ENTRYPOINT ["./main"]
