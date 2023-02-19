@@ -2,17 +2,14 @@ package controllers
 
 import (
 	"errors"
-	"fmt"
 	"github.com/gin-gonic/gin"
-	"github.com/go-playground/validator/v10"
 	"github.com/golang-jwt/jwt"
 	"github.com/mfitrahrmd/BTPN_Syariah-Image_Uploader/app"
 	"github.com/mfitrahrmd/BTPN_Syariah-Image_Uploader/config"
+	"github.com/mfitrahrmd/BTPN_Syariah-Image_Uploader/error"
 	"github.com/mfitrahrmd/BTPN_Syariah-Image_Uploader/helpers"
 	"github.com/mfitrahrmd/BTPN_Syariah-Image_Uploader/models"
-	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
-	"log"
 	"net/http"
 	"time"
 )
@@ -26,12 +23,12 @@ var (
 )
 
 type userController struct {
-	serverConfig config.Config
+	serverConfig *config.Config
 	database     *gorm.DB
 }
 
 // NewUserController create instance of user controller
-func NewUserController(database *gorm.DB, serverConfig config.Config) *userController {
+func NewUserController(database *gorm.DB, serverConfig *config.Config) *userController {
 	uc := userController{
 		serverConfig: serverConfig,
 		database:     database,
@@ -46,45 +43,35 @@ func (uc *userController) POSTRegisterUser(c *gin.Context) {
 
 	err := c.ShouldBindJSON(&req)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-			"message": helpers.CustomValidationErrorMessage(err.(validator.ValidationErrors)),
-		})
+		c.Error(err).SetType(gin.ErrorTypeBind)
 
 		return
 	}
 
 	// check if username already in used
 	q := uc.database.Model(&models.User{}).Where("username = ?", req.Username).Find(&models.User{})
-	if q.Error != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-			"message": errInternalServer.Error(),
-		})
+	if err = q.Error; err != nil {
+		c.Error(err).SetType(gin.ErrorTypePrivate)
 
 		return
 	}
 
 	if q.RowsAffected > 0 {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-			"message": errUsernameAlreadyExist.Error(),
-		})
+		c.Error(controllerError.New(http.StatusBadRequest, errUsernameAlreadyExist.Error())).SetType(gin.ErrorTypePublic)
 
 		return
 	}
 
 	// check if email already in used
 	q = uc.database.Model(&models.User{}).Where("email = ?", req.Email).Find(&models.User{})
-	if q.Error != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-			"message": errInternalServer.Error(),
-		})
+	if err = q.Error; err != nil {
+		c.Error(err).SetType(gin.ErrorTypePrivate)
 
 		return
 	}
 
 	if q.RowsAffected > 0 {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-			"message": errEmailAlreadyExist.Error(),
-		})
+		c.Error(controllerError.New(http.StatusBadRequest, errEmailAlreadyExist.Error())).SetType(gin.ErrorTypePublic)
 
 		return
 	}
@@ -92,9 +79,7 @@ func (uc *userController) POSTRegisterUser(c *gin.Context) {
 	// hash user's password from request
 	hashedPassword, err := helpers.HashPassword(req.Password)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-			"message": errInternalServer,
-		})
+		c.Error(err).SetType(gin.ErrorTypePrivate)
 
 		return
 	}
@@ -107,10 +92,7 @@ func (uc *userController) POSTRegisterUser(c *gin.Context) {
 	}
 
 	if err = uc.database.Model(&models.User{}).Create(&user).Error; err != nil {
-		fmt.Println(err)
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-			"message": errInternalServer,
-		})
+		c.Error(err).SetType(gin.ErrorTypePrivate)
 
 		return
 	}
@@ -129,9 +111,7 @@ func (uc *userController) GETLoginUser(c *gin.Context) {
 
 	err := c.ShouldBindJSON(&req)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-			"message": err.Error(),
-		})
+		c.Error(err).SetType(gin.ErrorTypeBind)
 
 		return
 	}
@@ -141,16 +121,12 @@ func (uc *userController) GETLoginUser(c *gin.Context) {
 
 	if err := uc.database.Model(&models.User{}).First(&user, "email = ?", req.Email).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{
-				"message": errUserNotFound.Error(),
-			})
+			c.Error(controllerError.New(http.StatusNotFound, errUserNotFound.Error())).SetType(gin.ErrorTypePublic)
 
 			return
 		}
 
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-			"message": errInternalServer.Error(),
-		})
+		c.Error(err).SetType(gin.ErrorTypePrivate)
 
 		return
 	}
@@ -158,18 +134,13 @@ func (uc *userController) GETLoginUser(c *gin.Context) {
 	// check if given password is correct
 	isMatch, err := helpers.ComparePassword(req.Password, user.Password)
 	if err != nil {
-		log.Println(errors.Is(err, bcrypt.ErrMismatchedHashAndPassword))
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-			"message": errInternalServer.Error(),
-		})
+		c.Error(err).SetType(gin.ErrorTypePrivate)
 
 		return
 	}
 
 	if !isMatch {
-		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-			"message": errWrongPassword.Error(),
-		})
+		c.Error(controllerError.New(http.StatusUnauthorized, errWrongPassword.Error())).SetType(gin.ErrorTypePublic)
 
 		return
 	}
@@ -184,11 +155,7 @@ func (uc *userController) GETLoginUser(c *gin.Context) {
 		},
 	}, uc.serverConfig.JwtSecretKey)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-			"message": errInternalServer.Error(),
-		})
-
-		return
+		c.Error(err).SetType(gin.ErrorTypePrivate)
 	}
 
 	// send response with generated access token
@@ -205,9 +172,7 @@ func (uc *userController) PUTUpdateUser(c *gin.Context) {
 
 	err := c.ShouldBindJSON(&req)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-			"message": err.Error(),
-		})
+		c.Error(err).SetType(gin.ErrorTypeBind)
 
 		return
 	}
@@ -217,34 +182,26 @@ func (uc *userController) PUTUpdateUser(c *gin.Context) {
 
 	if err := uc.database.Model(&models.User{}).First(&user, userId).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{
-				"message": errUserNotFound.Error(),
-			})
+			c.Error(controllerError.New(http.StatusNotFound, errUserNotFound.Error())).SetType(gin.ErrorTypePublic)
 
 			return
 		}
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-			"message": errInternalServer.Error(),
-		})
+
+		c.Error(err).SetType(gin.ErrorTypePrivate)
 
 		return
-
 	}
 
 	// check if username already in used
 	q := uc.database.Model(&models.User{}).Where("username = ?", req.Username).Not("id = ?", userId).Find(&models.User{})
 	if q.Error != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-			"message": errInternalServer.Error(),
-		})
+		c.Error(err).SetType(gin.ErrorTypePrivate)
 
 		return
 	}
 
 	if q.RowsAffected > 0 {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-			"message": errUsernameAlreadyExist.Error(),
-		})
+		c.Error(controllerError.New(http.StatusBadRequest, errUsernameAlreadyExist.Error())).SetType(gin.ErrorTypePublic)
 
 		return
 	}
@@ -252,17 +209,13 @@ func (uc *userController) PUTUpdateUser(c *gin.Context) {
 	// check if email already in used
 	q = uc.database.Model(&models.User{}).Where("email = ?", req.Email).Not("id = ?", userId).Find(&models.User{})
 	if q.Error != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-			"message": errInternalServer.Error(),
-		})
+		c.Error(err).SetType(gin.ErrorTypePrivate)
 
 		return
 	}
 
 	if q.RowsAffected > 0 {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-			"message": errEmailAlreadyExist.Error(),
-		})
+		c.Error(controllerError.New(http.StatusBadRequest, errEmailAlreadyExist.Error())).SetType(gin.ErrorTypePublic)
 
 		return
 	}
@@ -272,9 +225,7 @@ func (uc *userController) PUTUpdateUser(c *gin.Context) {
 	user.Email = req.Email
 
 	if err = uc.database.Model(&models.User{}).Where("id = ?", userId).Updates(&user).Error; err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-			"message": errInternalServer.Error(),
-		})
+		c.Error(err).SetType(gin.ErrorTypePrivate)
 
 		return
 	}
@@ -295,25 +246,18 @@ func (uc *userController) DELETEDeleteUser(c *gin.Context) {
 
 	if err := uc.database.Model(&models.User{}).First(&user, userId).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{
-				"message": errUserNotFound.Error(),
-			})
+			c.Error(controllerError.New(http.StatusNotFound, errUserNotFound.Error())).SetType(gin.ErrorTypePublic)
 
 			return
 		}
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-			"message": errInternalServer.Error(),
-		})
+		c.Error(err).SetType(gin.ErrorTypePrivate)
 
 		return
-
 	}
 
 	// delete user data in repository permanently
 	if err := uc.database.Unscoped().Model(&models.User{}).Delete(&user).Error; err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-			"message": errInternalServer.Error(),
-		})
+		c.Error(err).SetType(gin.ErrorTypePrivate)
 
 		return
 	}
