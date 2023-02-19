@@ -6,12 +6,9 @@ import (
 )
 
 func main() {
-	srv, err := server.BuildServer()
-	if err != nil {
-		logrus.Fatalln(err)
-	}
+	srv := server.BuildServer()
 
-	err = srv.Run()
+	err := srv.Run()
 	if err != nil {
 		logrus.Fatalln(err)
 	}

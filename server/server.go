@@ -8,44 +8,41 @@ import (
 	"github.com/mfitrahrmd/BTPN_Syariah-Image_Uploader/database"
 	"github.com/mfitrahrmd/BTPN_Syariah-Image_Uploader/middlewares"
 	"github.com/mfitrahrmd/BTPN_Syariah-Image_Uploader/router"
+	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
 
 type Server struct {
-	ServerConfig config.Config
-	RouterEngine *gin.Engine
-	Repository   *gorm.DB
+	ServerConfig   *config.Config
+	RouterEngine   *gin.Engine
+	DatabaseEngine *gorm.DB
+	Logger         *logrus.Logger
 }
 
-func BuildServer() (*Server, error) {
-	var s Server
+func BuildServer() *Server {
+	routerInstance := gin.Default()
+	loggerInstance := logrus.New()
+	configInstance := config.New(".", loggerInstance)
+	databaseInstance := database.Start(database.Config{
+		User:     configInstance.PostgresUser,
+		Password: configInstance.PostgresPassword,
+		Host:     configInstance.PostgresHost,
+		Port:     configInstance.PostgresPort,
+		Database: configInstance.PostgresDb,
+	}, true, loggerInstance)
 
-	s.RouterEngine = gin.Default()
-
-	cfg, err := config.LoadConfig(".")
-	if err != nil {
-		return nil, fmt.Errorf("err loading config : %w", err)
+	serverInstance := Server{
+		ServerConfig:   configInstance,
+		RouterEngine:   routerInstance,
+		DatabaseEngine: databaseInstance,
+		Logger:         loggerInstance,
 	}
 
-	s.ServerConfig = cfg
+	serverInstance.RouterEngine.Use(middlewares.ErrorHandler(serverInstance.Logger))
+	router.WithUserRoutes(serverInstance.RouterEngine, controllers.NewUserController(serverInstance.DatabaseEngine, serverInstance.ServerConfig))
+	router.WithPhotoRoutes(serverInstance.RouterEngine, controllers.NewPhotoController(serverInstance.DatabaseEngine, serverInstance.ServerConfig), middlewares.NewAuthMiddleware(serverInstance.DatabaseEngine, serverInstance.ServerConfig), middlewares.NewPhotoMiddleware(serverInstance.DatabaseEngine, serverInstance.ServerConfig))
 
-	db, err := database.StartDatabase(database.Config{
-		User:     cfg.PostgresUser,
-		Password: cfg.PostgresPassword,
-		Host:     cfg.PostgresHost,
-		Port:     cfg.PostgresPort,
-		Database: cfg.PostgresDb,
-	}, true)
-	if err != nil {
-		return nil, fmt.Errorf("err starting database : %w", err)
-	}
-
-	s.Repository = db
-
-	router.WithUserRoutes(s.RouterEngine, controllers.NewUserController(s.Repository, s.ServerConfig))
-	router.WithPhotoRoutes(s.RouterEngine, controllers.NewPhotoController(s.Repository, s.ServerConfig), middlewares.NewAuthMiddleware(s.Repository, s.ServerConfig), middlewares.NewPhotoMiddleware(s.Repository, s.ServerConfig))
-
-	return &s, nil
+	return &serverInstance
 }
 
 func (s *Server) Run() error {
