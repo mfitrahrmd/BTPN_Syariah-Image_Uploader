@@ -6,6 +6,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/mfitrahrmd/BTPN_Syariah-Image_Uploader/app"
 	"github.com/mfitrahrmd/BTPN_Syariah-Image_Uploader/config"
+	controllerError "github.com/mfitrahrmd/BTPN_Syariah-Image_Uploader/error"
 	"github.com/mfitrahrmd/BTPN_Syariah-Image_Uploader/helpers"
 	"github.com/mfitrahrmd/BTPN_Syariah-Image_Uploader/models"
 	"gorm.io/gorm"
@@ -13,16 +14,17 @@ import (
 )
 
 var (
-	errPhotoNotFound = errors.New("photo not found")
+	errPhotoNotFound    = errors.New("photo not found")
+	errTokenClaimsEmpty = errors.New("token claims empty")
 )
 
 type photoController struct {
-	serverConfig config.Config
+	serverConfig *config.Config
 	database     *gorm.DB
 }
 
 // NewPhotoController create instance of photo controller
-func NewPhotoController(database *gorm.DB, serverConfig config.Config) *photoController {
+func NewPhotoController(database *gorm.DB, serverConfig *config.Config) *photoController {
 	pc := photoController{
 		serverConfig: serverConfig,
 		database:     database,
@@ -34,9 +36,7 @@ func NewPhotoController(database *gorm.DB, serverConfig config.Config) *photoCon
 func (pc *photoController) POSTInsertPhoto(c *gin.Context) {
 	tokenClaims, ok := c.MustGet("claims").(helpers.Claims)
 	if !ok {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-			"message": errInternalServer.Error(),
-		})
+		c.Error(errTokenClaimsEmpty)
 
 		return
 	}
@@ -45,7 +45,7 @@ func (pc *photoController) POSTInsertPhoto(c *gin.Context) {
 
 	err := c.ShouldBindJSON(&req)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, helpers.CustomValidationErrorMessage(err.(validator.ValidationErrors)))
+		c.Error(controllerError.New(http.StatusBadRequest, errValidation.Error(), helpers.CustomValidationErrorMessage(err.(validator.ValidationErrors))))
 
 		return
 	}
@@ -58,9 +58,7 @@ func (pc *photoController) POSTInsertPhoto(c *gin.Context) {
 	}
 
 	if err := pc.database.Model(models.Photo{}).Create(&photo).Error; err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-			"message": errInternalServer.Error(),
-		})
+		c.Error(err)
 
 		return
 	}
@@ -77,9 +75,7 @@ func (pc *photoController) GETFindAllPhotos(c *gin.Context) {
 	var res app.FindAllPhotosResponse
 
 	if err := pc.database.Model(&models.Photo{}).Find(&res.Photos).Error; err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-			"message": errInternalServer.Error(),
-		})
+		c.Error(err)
 
 		return
 	}
@@ -94,7 +90,7 @@ func (pc *photoController) PUTUpdatePhoto(c *gin.Context) {
 
 	err := c.ShouldBindJSON(&req)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, helpers.CustomValidationErrorMessage(err.(validator.ValidationErrors)))
+		c.Error(controllerError.New(http.StatusBadRequest, errValidation.Error(), helpers.CustomValidationErrorMessage(err.(validator.ValidationErrors))))
 
 		return
 	}
@@ -102,14 +98,15 @@ func (pc *photoController) PUTUpdatePhoto(c *gin.Context) {
 	// check if photo to be updated is exists in repository
 	var photo models.Photo
 
-	if err := pc.database.Model(&models.Photo{}).First(&photo, photoId).Error; err != nil {
+	if err = pc.database.Model(&models.Photo{}).First(&photo, photoId).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{
-				"message": errPhotoNotFound.Error(),
-			})
+			c.Error(controllerError.New(http.StatusNotFound, errPhotoNotFound.Error()))
 
 			return
 		}
+		c.Error(err)
+
+		return
 	}
 
 	// update the photo data
@@ -117,10 +114,8 @@ func (pc *photoController) PUTUpdatePhoto(c *gin.Context) {
 	photo.Caption = req.Caption
 	photo.PhotoUrl = req.PhotoUrl
 
-	if err := pc.database.Model(&models.Photo{}).Where("id = ?", photoId).Updates(&photo); err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-			"message": errInternalServer.Error(),
-		})
+	if err = pc.database.Model(&models.Photo{}).Where("id = ?", photoId).Updates(&photo).Error; err != nil {
+		c.Error(err)
 
 		return
 	}
@@ -142,19 +137,18 @@ func (pc *photoController) DELETEDeletePhoto(c *gin.Context) {
 
 	if err := pc.database.Model(&models.Photo{}).First(&photo, photoId).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.AbortWithStatusJSON(http.StatusNotFound, gin.H{
-				"message": errPhotoNotFound.Error(),
-			})
+			c.Error(controllerError.New(http.StatusNotFound, errPhotoNotFound.Error()))
 
 			return
 		}
+		c.Error(err)
+
+		return
 	}
 
 	// delete photo data in repository permanently
 	if err := pc.database.Unscoped().Model(&models.Photo{}).Delete(photo).Error; err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-			"message": errInternalServer.Error(),
-		})
+		c.Error(err)
 
 		return
 	}

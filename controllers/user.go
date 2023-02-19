@@ -3,6 +3,7 @@ package controllers
 import (
 	"errors"
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 	"github.com/golang-jwt/jwt"
 	"github.com/mfitrahrmd/BTPN_Syariah-Image_Uploader/app"
 	"github.com/mfitrahrmd/BTPN_Syariah-Image_Uploader/config"
@@ -15,11 +16,11 @@ import (
 )
 
 var (
-	errInternalServer       = errors.New("unexpected server error, please try again later")
 	errUserNotFound         = errors.New("user not found")
 	errWrongPassword        = errors.New("wrong password")
 	errUsernameAlreadyExist = errors.New("username already exist")
 	errEmailAlreadyExist    = errors.New("email already exist")
+	errValidation           = errors.New("validation error")
 )
 
 type userController struct {
@@ -43,7 +44,7 @@ func (uc *userController) POSTRegisterUser(c *gin.Context) {
 
 	err := c.ShouldBindJSON(&req)
 	if err != nil {
-		c.Error(err).SetType(gin.ErrorTypeBind)
+		c.Error(controllerError.New(http.StatusBadRequest, errValidation.Error(), helpers.CustomValidationErrorMessage(err.(validator.ValidationErrors))))
 
 		return
 	}
@@ -51,13 +52,13 @@ func (uc *userController) POSTRegisterUser(c *gin.Context) {
 	// check if username already in used
 	q := uc.database.Model(&models.User{}).Where("username = ?", req.Username).Find(&models.User{})
 	if err = q.Error; err != nil {
-		c.Error(err).SetType(gin.ErrorTypePrivate)
+		c.Error(err)
 
 		return
 	}
 
 	if q.RowsAffected > 0 {
-		c.Error(controllerError.New(http.StatusBadRequest, errUsernameAlreadyExist.Error())).SetType(gin.ErrorTypePublic)
+		c.Error(controllerError.New(http.StatusBadRequest, errUsernameAlreadyExist.Error()))
 
 		return
 	}
@@ -65,13 +66,13 @@ func (uc *userController) POSTRegisterUser(c *gin.Context) {
 	// check if email already in used
 	q = uc.database.Model(&models.User{}).Where("email = ?", req.Email).Find(&models.User{})
 	if err = q.Error; err != nil {
-		c.Error(err).SetType(gin.ErrorTypePrivate)
+		c.Error(err)
 
 		return
 	}
 
 	if q.RowsAffected > 0 {
-		c.Error(controllerError.New(http.StatusBadRequest, errEmailAlreadyExist.Error())).SetType(gin.ErrorTypePublic)
+		c.Error(controllerError.New(http.StatusBadRequest, errEmailAlreadyExist.Error()))
 
 		return
 	}
@@ -79,7 +80,7 @@ func (uc *userController) POSTRegisterUser(c *gin.Context) {
 	// hash user's password from request
 	hashedPassword, err := helpers.HashPassword(req.Password)
 	if err != nil {
-		c.Error(err).SetType(gin.ErrorTypePrivate)
+		c.Error(err)
 
 		return
 	}
@@ -92,7 +93,7 @@ func (uc *userController) POSTRegisterUser(c *gin.Context) {
 	}
 
 	if err = uc.database.Model(&models.User{}).Create(&user).Error; err != nil {
-		c.Error(err).SetType(gin.ErrorTypePrivate)
+		c.Error(err)
 
 		return
 	}
@@ -111,7 +112,7 @@ func (uc *userController) GETLoginUser(c *gin.Context) {
 
 	err := c.ShouldBindJSON(&req)
 	if err != nil {
-		c.Error(err).SetType(gin.ErrorTypeBind)
+		c.Error(controllerError.New(http.StatusBadRequest, errValidation.Error(), helpers.CustomValidationErrorMessage(err.(validator.ValidationErrors))))
 
 		return
 	}
@@ -121,12 +122,12 @@ func (uc *userController) GETLoginUser(c *gin.Context) {
 
 	if err := uc.database.Model(&models.User{}).First(&user, "email = ?", req.Email).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.Error(controllerError.New(http.StatusNotFound, errUserNotFound.Error())).SetType(gin.ErrorTypePublic)
+			c.Error(controllerError.New(http.StatusNotFound, errUserNotFound.Error()))
 
 			return
 		}
 
-		c.Error(err).SetType(gin.ErrorTypePrivate)
+		c.Error(err)
 
 		return
 	}
@@ -134,13 +135,13 @@ func (uc *userController) GETLoginUser(c *gin.Context) {
 	// check if given password is correct
 	isMatch, err := helpers.ComparePassword(req.Password, user.Password)
 	if err != nil {
-		c.Error(err).SetType(gin.ErrorTypePrivate)
+		c.Error(err)
 
 		return
 	}
 
 	if !isMatch {
-		c.Error(controllerError.New(http.StatusUnauthorized, errWrongPassword.Error())).SetType(gin.ErrorTypePublic)
+		c.Error(controllerError.New(http.StatusUnauthorized, errWrongPassword.Error()))
 
 		return
 	}
@@ -155,7 +156,7 @@ func (uc *userController) GETLoginUser(c *gin.Context) {
 		},
 	}, uc.serverConfig.JwtSecretKey)
 	if err != nil {
-		c.Error(err).SetType(gin.ErrorTypePrivate)
+		c.Error(err)
 	}
 
 	// send response with generated access token
@@ -172,7 +173,7 @@ func (uc *userController) PUTUpdateUser(c *gin.Context) {
 
 	err := c.ShouldBindJSON(&req)
 	if err != nil {
-		c.Error(err).SetType(gin.ErrorTypeBind)
+		c.Error(controllerError.New(http.StatusBadRequest, errValidation.Error(), helpers.CustomValidationErrorMessage(err.(validator.ValidationErrors))))
 
 		return
 	}
@@ -182,12 +183,12 @@ func (uc *userController) PUTUpdateUser(c *gin.Context) {
 
 	if err := uc.database.Model(&models.User{}).First(&user, userId).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.Error(controllerError.New(http.StatusNotFound, errUserNotFound.Error())).SetType(gin.ErrorTypePublic)
+			c.Error(controllerError.New(http.StatusNotFound, errUserNotFound.Error()))
 
 			return
 		}
 
-		c.Error(err).SetType(gin.ErrorTypePrivate)
+		c.Error(err)
 
 		return
 	}
@@ -195,13 +196,13 @@ func (uc *userController) PUTUpdateUser(c *gin.Context) {
 	// check if username already in used
 	q := uc.database.Model(&models.User{}).Where("username = ?", req.Username).Not("id = ?", userId).Find(&models.User{})
 	if q.Error != nil {
-		c.Error(err).SetType(gin.ErrorTypePrivate)
+		c.Error(err)
 
 		return
 	}
 
 	if q.RowsAffected > 0 {
-		c.Error(controllerError.New(http.StatusBadRequest, errUsernameAlreadyExist.Error())).SetType(gin.ErrorTypePublic)
+		c.Error(controllerError.New(http.StatusBadRequest, errUsernameAlreadyExist.Error()))
 
 		return
 	}
@@ -209,13 +210,13 @@ func (uc *userController) PUTUpdateUser(c *gin.Context) {
 	// check if email already in used
 	q = uc.database.Model(&models.User{}).Where("email = ?", req.Email).Not("id = ?", userId).Find(&models.User{})
 	if q.Error != nil {
-		c.Error(err).SetType(gin.ErrorTypePrivate)
+		c.Error(err)
 
 		return
 	}
 
 	if q.RowsAffected > 0 {
-		c.Error(controllerError.New(http.StatusBadRequest, errEmailAlreadyExist.Error())).SetType(gin.ErrorTypePublic)
+		c.Error(controllerError.New(http.StatusBadRequest, errEmailAlreadyExist.Error()))
 
 		return
 	}
@@ -225,7 +226,7 @@ func (uc *userController) PUTUpdateUser(c *gin.Context) {
 	user.Email = req.Email
 
 	if err = uc.database.Model(&models.User{}).Where("id = ?", userId).Updates(&user).Error; err != nil {
-		c.Error(err).SetType(gin.ErrorTypePrivate)
+		c.Error(err)
 
 		return
 	}
@@ -246,18 +247,18 @@ func (uc *userController) DELETEDeleteUser(c *gin.Context) {
 
 	if err := uc.database.Model(&models.User{}).First(&user, userId).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.Error(controllerError.New(http.StatusNotFound, errUserNotFound.Error())).SetType(gin.ErrorTypePublic)
+			c.Error(controllerError.New(http.StatusNotFound, errUserNotFound.Error()))
 
 			return
 		}
-		c.Error(err).SetType(gin.ErrorTypePrivate)
+		c.Error(err)
 
 		return
 	}
 
 	// delete user data in repository permanently
 	if err := uc.database.Unscoped().Model(&models.User{}).Delete(&user).Error; err != nil {
-		c.Error(err).SetType(gin.ErrorTypePrivate)
+		c.Error(err)
 
 		return
 	}
