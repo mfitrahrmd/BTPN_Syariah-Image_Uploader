@@ -154,7 +154,7 @@ func (pc *photoController) DELETEDeletePhoto(c *gin.Context) {
 	}
 
 	// send response with message
-	c.JSON(http.StatusOK, gin.H{
-		"message": "photo deleted",
+	c.JSON(http.StatusOK, app.DeletePhotoResponse{
+		ID: photo.ID,
 	})
 }
