@@ -37,3 +37,7 @@ type UpdatePhotoResponse struct {
 	Caption  string `json:"caption,omitempty"`
 	PhotoUrl string `json:"photoUrl,omitempty"`
 }
+
+type DeletePhotoResponse struct {
+	ID uint `json:"id,omitempty"`
+}
