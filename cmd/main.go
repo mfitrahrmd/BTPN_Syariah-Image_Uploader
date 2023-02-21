@@ -2,14 +2,15 @@ package main
 
 import (
 	"github.com/mfitrahrmd/BTPN_Syariah-Image_Uploader/server"
-	"github.com/sirupsen/logrus"
 )
 
 func main() {
 	srv := server.BuildServer()
 
-	err := srv.Run()
-	if err != nil {
-		logrus.Fatalln(err)
-	}
+	// swagger API documentation
+	srv.RouterEngine.StaticFile("/swagger.json", "openapi/spec/swagger.json")
+	srv.RouterEngine.Static("/swagger/", "openapi/dist/")
+	srv.Logger.Printf("http://%s/swagger for API documentation", srv.GetAddress())
+
+	panic(srv.Run())
 }
