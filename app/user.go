@@ -7,7 +7,7 @@ type RegisterUserResponse struct {
 }
 
 type RegisterUserRequest struct {
-	Username string `json:"username,omitempty" binding:"required"`
+	Username string `json:"username,omitempty" binding:"required,min=6"`
 	Email    string `json:"email,omitempty" binding:"required,email"`
 	Password string `json:"password,omitempty" binding:"required,min=6"`
 }
@@ -28,6 +28,10 @@ type UpdateUserResponse struct {
 }
 
 type UpdateUserRequest struct {
-	Username string `json:"username,omitempty" binding:"required"`
+	Username string `json:"username,omitempty" binding:"required,min=6"`
 	Email    string `json:"email,omitempty" binding:"required,email"`
+}
+
+type DeleteUserResponse struct {
+	ID uint `json:"id,omitempty"`
 }
