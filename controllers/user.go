@@ -264,7 +264,7 @@ func (uc *userController) DELETEDeleteUser(c *gin.Context) {
 	}
 
 	// send response with message
-	c.JSON(http.StatusOK, gin.H{
-		"message": "user deleted",
+	c.JSON(http.StatusOK, app.DeleteUserResponse{
+		ID: user.ID,
 	})
 }
