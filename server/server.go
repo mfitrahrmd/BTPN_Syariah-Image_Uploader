@@ -21,6 +21,11 @@ type Server struct {
 
 func BuildServer() *Server {
 	routerInstance := gin.Default()
+	err := routerInstance.SetTrustedProxies(nil)
+	if err != nil {
+		panic(err)
+	}
+
 	loggerInstance := logrus.New()
 	configInstance := config.New(".", loggerInstance)
 	databaseInstance := database.Start(database.Config{
@@ -45,6 +50,10 @@ func BuildServer() *Server {
 	return &serverInstance
 }
 
+func (s *Server) GetAddress() string {
+	return fmt.Sprintf("%s:%s", s.ServerConfig.AppHost, s.ServerConfig.AppPort)
+}
+
 func (s *Server) Run() error {
-	return s.RouterEngine.Run(fmt.Sprintf("%s:%s", s.ServerConfig.AppHost, s.ServerConfig.AppPort))
+	return s.RouterEngine.Run(s.GetAddress())
 }
