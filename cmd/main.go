@@ -10,7 +10,7 @@ func main() {
 	// swagger API documentation
 	srv.RouterEngine.StaticFile("/swagger.json", "openapi/spec/swagger.json")
 	srv.RouterEngine.Static("/swagger/", "openapi/dist/")
-	srv.Logger.Printf("http://%s/swagger for API documentation", srv.GetAddress())
+	srv.Logger.Printf("http://%s/swagger/ for API documentation", srv.GetAddress())
 
 	panic(srv.Run())
 }
