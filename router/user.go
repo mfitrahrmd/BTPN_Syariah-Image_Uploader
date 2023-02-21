@@ -16,6 +16,7 @@ func WithUserRoutes(r gin.IRouter, userController UserController) {
 	{
 		users.POST("/register", userController.POSTRegisterUser)
 		users.GET("/login", userController.GETLoginUser)
+		users.POST("/login", userController.GETLoginUser) // to support OpenAPI Spec, since GET request cannot have body in OpenAPI spec.
 		users.PUT("/:userId", userController.PUTUpdateUser)
 		users.DELETE("/:userId", userController.DELETEDeleteUser)
 	}
