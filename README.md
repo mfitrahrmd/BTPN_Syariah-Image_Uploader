@@ -18,6 +18,9 @@ or with docker:
 make run-dev-docker
 ```
 
+### For API Specification
+run this application and access http://localhost:3000/swagger/
+
 ## How to Stop
 with docker:
 ```
