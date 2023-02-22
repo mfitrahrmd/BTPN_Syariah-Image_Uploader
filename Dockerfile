@@ -4,7 +4,7 @@ LABEL maintaner="Muhamad Fitrah Ramadhan <mfitrahrmd>"
 
 RUN apk update && apk add --no-cache git
 
-WORKDIR /app
+WORKDIR /root
 
 COPY . .
 
@@ -20,7 +20,10 @@ FROM alpine:latest
 
 WORKDIR /root
 
-COPY --from=builder /app/build/main .
-COPY --from=builder /app/*.env .
+COPY --from=builder /root/build/main .
+COPY --from=builder /root/*.env .
+COPY --from=builder /root/openapi/ ./openapi
+
+EXPOSE 3000
 
 ENTRYPOINT ["./main"]
